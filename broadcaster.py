@@ -1,10 +1,10 @@
 """
 broadcaster.py — Serves the current time to browsers every 5 seconds.
- 
+
 - HTTP  :8080/          -> the browser UI (single-page app)
 - HTTP  :8080/events    -> Server-Sent Events stream (one per browser tab)
 """
- 
+
 import threading
 import time
 import queue
@@ -12,18 +12,18 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
- 
+
 # Shared state
 subscriber_queues: list[queue.Queue] = []
 subscriber_lock = threading.Lock()
 latest_time = "Waiting for first broadcast..."
- 
- 
+
+
 # Threaded server (fixes liveness probe crash loop)
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     daemon_threads = True
- 
- 
+
+
 # Broadcaster thread
 def broadcast() -> None:
     """Stamps the time and pushes it to every open browser tab on 5 sec interval."""
@@ -36,8 +36,8 @@ def broadcast() -> None:
         with subscriber_lock:
             for q in subscriber_queues:
                 q.put(curr_time)
- 
- 
+
+
 # Browser UI (single-page app, no external dependencies)
 HTML_PAGE = """\
 <!DOCTYPE html>
@@ -127,9 +127,9 @@ HTML_PAGE = """\
     const statusText = document.getElementById('status-text');
     const histList   = document.getElementById('history-list');
     const MAX_HIST   = 5;
- 
+
     const es = new EventSource('/events');
- 
+
     es.onopen = () => {
       dot.classList.remove('disconnected');
       statusText.textContent = 'Connected — updates every 5 s';
@@ -150,13 +150,13 @@ HTML_PAGE = """\
 </body>
 </html>
 """
- 
- 
+
+
 # HTTP handler
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         pass  # silence default noise; we do our own logging
- 
+
     def do_GET(self):
         if self.path == "/":
             self._serve_html()
@@ -164,7 +164,7 @@ class Handler(BaseHTTPRequestHandler):
             self._serve_sse()
         else:
             self.send_error(404)
- 
+
     def _serve_html(self):
         body = HTML_PAGE.encode()
         self.send_response(200)
@@ -173,7 +173,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
         print(f"[HTTP] {self.client_address[0]} loaded the page")
- 
+
     def _serve_sse(self):
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
@@ -186,13 +186,13 @@ class Handler(BaseHTTPRequestHandler):
         q: queue.Queue = queue.Queue()
         with subscriber_lock:
             subscriber_queues.append(q)
- 
+
         try:
             self.wfile.write(f"data: {latest_time}\n\n".encode())
             self.wfile.flush()
         except Exception:
             pass
- 
+
         try:
             while True:
                 try:
@@ -209,8 +209,8 @@ class Handler(BaseHTTPRequestHandler):
         finally:
             with subscriber_lock:
                 subscriber_queues.remove(q)
- 
- 
+
+
 # Entry point
 def main():
     host = "0.0.0.0"
