@@ -2,8 +2,8 @@
 """
 broadcaster.py — Serves the current time to browsers every 5 seconds.
  
-- HTTP  :8080  /          → the browser UI (single-page app)
-- HTTP  :8080  /events    → Server-Sent Events stream (one per browser tab)
+- HTTP  :8080/          -> the browser UI (single-page app)
+- HTTP  :8080/events    -> Server-Sent Events stream (one per browser tab)
 """
  
 import threading
