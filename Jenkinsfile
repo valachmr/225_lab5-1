@@ -33,6 +33,21 @@ pipeline {
             }
         }
 
+        stage('Static Code Analysis - Flake8') {
+            steps {
+                sh '''
+                    python3 -m pip install flake8
+                    python3 -m flake8 broadcaster.py --max-line-length=120 --output-file=flake8-report.txt || true
+                    cat flake8-report.txt
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'flake8-report.txt', fingerprint: true
+                }
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 script {
