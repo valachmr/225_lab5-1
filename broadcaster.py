@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 """
 broadcaster.py — Serves the current time to browsers every 5 seconds.
  
@@ -14,29 +13,32 @@ from zoneinfo import ZoneInfo
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
  
-# ── Shared state ──────────────────────────────────────────────────────────────
+# Shared state
 subscriber_queues: list[queue.Queue] = []
-subscriber_lock   = threading.Lock()
-latest_time       = "Waiting for first broadcast…"
+subscriber_lock = threading.Lock()
+latest_time = "Waiting for first broadcast..."
  
-# ── Threaded server (fixes liveness probe crash loop) ────────────────────────
+ 
+# Threaded server (fixes liveness probe crash loop)
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     daemon_threads = True
  
-# ── Broadcaster thread ────────────────────────────────────────────────────────
+ 
+# Broadcaster thread
 def broadcast() -> None:
     """Stamps the time and pushes it to every open browser tab on 5 sec interval."""
     global latest_time
     while True:
         time.sleep(5)
-        curr_time   = datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %H:%M:%S")
+        curr_time = datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %H:%M:%S")
         latest_time = curr_time
         print(f"[BROADCAST] {curr_time}")
         with subscriber_lock:
             for q in subscriber_queues:
                 q.put(curr_time)
  
-# ── Browser UI (single-page app, no external dependencies) ───────────────────
+ 
+# Browser UI (single-page app, no external dependencies)
 HTML_PAGE = """\
 <!DOCTYPE html>
 <html lang="en">
@@ -110,10 +112,10 @@ HTML_PAGE = """\
 </head>
 <body>
   <h1>&#128339; Live Time Broadcaster</h1>
-  <div id="clock">connecting…</div>
+  <div id="clock">connecting...</div>
   <div id="status">
     <div id="dot" class="disconnected"></div>
-    <span id="status-text">Connecting…</span>
+    <span id="status-text">Connecting...</span>
   </div>
   <div id="history">
     <h2>Recent broadcasts</h2>
@@ -142,14 +144,15 @@ HTML_PAGE = """\
     };
     es.onerror = () => {
       dot.classList.add('disconnected');
-      statusText.textContent = 'Connection lost — retrying…';
+      statusText.textContent = 'Connection lost — retrying...';
     };
   </script>
 </body>
 </html>
 """
  
-# ── HTTP handler ──────────────────────────────────────────────────────────────
+ 
+# HTTP handler
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         pass  # silence default noise; we do our own logging
@@ -165,7 +168,7 @@ class Handler(BaseHTTPRequestHandler):
     def _serve_html(self):
         body = HTML_PAGE.encode()
         self.send_response(200)
-        self.send_header("Content-Type",   "text/html; charset=utf-8")
+        self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -173,9 +176,9 @@ class Handler(BaseHTTPRequestHandler):
  
     def _serve_sse(self):
         self.send_response(200)
-        self.send_header("Content-Type",  "text/event-stream")
+        self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-cache")
-        self.send_header("Connection",    "keep-alive")
+        self.send_header("Connection", "keep-alive")
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         print(f"[SSE ] {self.client_address[0]} subscribed")
@@ -207,20 +210,22 @@ class Handler(BaseHTTPRequestHandler):
             with subscriber_lock:
                 subscriber_queues.remove(q)
  
-# ── Entry point ───────────────────────────────────────────────────────────────
+ 
+# Entry point
 def main():
-    host     = "0.0.0.0"
+    host = "0.0.0.0"
     web_port = 8080
  
     t = threading.Thread(target=broadcast, daemon=True)
     t.start()
  
     server = ThreadedHTTPServer((host, web_port), Handler)
-    print(f"Broadcaster running!")
+    print("Broadcaster running!")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         print("\nShutting down.")
+ 
  
 if __name__ == "__main__":
     main()
