@@ -21,7 +21,7 @@ pipeline {
         stage('Security Scan - Bandit') {
             steps {
                 sh '''
-                    pip3 install bandit
+                    python3 -m pip install bandit
                     python3 -m bandit -r broadcaster.py -f txt -o bandit-report.txt || true
                     cat bandit-report.txt
                 '''
