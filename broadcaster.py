@@ -4,9 +4,7 @@ broadcaster.py — Serves the current time to browsers every 5 seconds.
  
 - HTTP  :8080  /          → the browser UI (single-page app)
 - HTTP  :8080  /events    → Server-Sent Events stream (one per browser tab)
- 
-No Python client needed — just point any browser at http://<host>:8080
-and it will receive live time updates pushed from the server.
+
 """
  
 import threading
@@ -22,7 +20,7 @@ latest_time       = "Waiting for first broadcast…"
  
 # ── Broadcaster thread ────────────────────────────────────────────────────────
 def broadcast() -> None:
-    """Every 5 seconds, stamp the time and push it to every open browser tab."""
+    """Stamps the time and push it to every open browser tab on 5 sec interval."""
     global latest_time
     while True:
         time.sleep(5)
@@ -214,9 +212,7 @@ def main():
     t.start()
  
     server = HTTPServer((host, web_port), Handler)
-    print(f"Broadcaster running — open http://localhost:{web_port} in your browser")
-    print("(or substitute your load-balancer hostname / IP)")
- 
+    print(f"Broadcaster running!")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
