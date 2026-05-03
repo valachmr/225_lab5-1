@@ -4,27 +4,32 @@ broadcaster.py — Serves the current time to browsers every 5 seconds.
  
 - HTTP  :8080  /          → the browser UI (single-page app)
 - HTTP  :8080  /events    → Server-Sent Events stream (one per browser tab)
-
 """
  
 import threading
 import time
 import queue
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from socketserver import ThreadingMixIn
  
 # ── Shared state ──────────────────────────────────────────────────────────────
 subscriber_queues: list[queue.Queue] = []
 subscriber_lock   = threading.Lock()
 latest_time       = "Waiting for first broadcast…"
  
+# ── Threaded server (fixes liveness probe crash loop) ────────────────────────
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    daemon_threads = True
+ 
 # ── Broadcaster thread ────────────────────────────────────────────────────────
 def broadcast() -> None:
-    """Stamps the time and push it to every open browser tab on 5 sec interval."""
+    """Stamps the time and pushes it to every open browser tab on 5 sec interval."""
     global latest_time
     while True:
         time.sleep(5)
-        curr_time   = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        curr_time   = datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %H:%M:%S")
         latest_time = curr_time
         print(f"[BROADCAST] {curr_time}")
         with subscriber_lock:
@@ -179,7 +184,6 @@ class Handler(BaseHTTPRequestHandler):
         with subscriber_lock:
             subscriber_queues.append(q)
  
-        # Send the last known time immediately so the page isn't blank
         try:
             self.wfile.write(f"data: {latest_time}\n\n".encode())
             self.wfile.flush()
@@ -211,7 +215,7 @@ def main():
     t = threading.Thread(target=broadcast, daemon=True)
     t.start()
  
-    server = HTTPServer((host, web_port), Handler)
+    server = ThreadedHTTPServer((host, web_port), Handler)
     print(f"Broadcaster running!")
     try:
         server.serve_forever()
