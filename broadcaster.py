@@ -182,7 +182,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         print(f"[SSE ] {self.client_address[0]} subscribed")
- 
+
         q: queue.Queue = queue.Queue()
         with subscriber_lock:
             subscriber_queues.append(q)
@@ -215,17 +215,17 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     host = "0.0.0.0"
     web_port = 8080
- 
+
     t = threading.Thread(target=broadcast, daemon=True)
     t.start()
- 
+
     server = ThreadedHTTPServer((host, web_port), Handler)
     print("Broadcaster running!")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         print("\nShutting down.")
- 
- 
+
+
 if __name__ == "__main__":
     main()
